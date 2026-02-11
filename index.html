@@ -260,16 +260,16 @@
         }
 
         @media (max-width: 700px), (pointer: coarse) {
-            h1 { font-size: 1.2rem; margin-bottom: 2px; }
-            .header { margin-bottom: 5px; }
-            .stats { font-size: 0.7rem; gap: 8px; }
-            .stat { padding: 4px 8px; }
-            .controls { display: grid !important; gap: 6px; margin-top: 10px; padding: 5px; }
-            .control-btn { width: 55px; height: 55px; font-size: 1.4rem; }
-            .game-area { flex-direction: column; align-items: center; gap: 8px; }
+            h1 { font-size: 1.4rem; margin-bottom: 3px; }
+            .header { margin-bottom: 8px; }
+            .stats { font-size: 0.85rem; gap: 10px; }
+            .stat { padding: 5px 10px; }
+            .controls { display: grid !important; gap: 8px; margin-top: 12px; padding: 8px; }
+            .control-btn { width: 65px; height: 65px; font-size: 1.6rem; }
+            .game-area { flex-direction: column; align-items: center; gap: 10px; }
             .side-panel { display: none; }
             .keyboard-hint { display: none; }
-            .game-container { gap: 5px; }
+            .game-container { gap: 8px; }
             .next-piece { display: none; }
         }
 
@@ -335,9 +335,88 @@
         <button onclick="restartGame()">🔄 Reiniciar</button>
     </div>
 
-    <audio id="bg-music" loop>
-        <source src="music.mp3" type="audio/mpeg">
-    </audio>
+    <script>
+        // 🎵 Chiptune Music Generator
+        class ChiptuneMusic {
+            constructor() {
+                this.audioCtx = null;
+                this.isPlaying = false;
+                this.intervalId = null;
+                this.gainNode = null;
+            }
+
+            init() {
+                this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                this.gainNode = this.audioCtx.createGain();
+                this.gainNode.gain.value = 0.15;
+                this.gainNode.connect(this.audioCtx.destination);
+            }
+
+            playNote(freq, duration, time, type = 'square') {
+                const osc = this.audioCtx.createOscillator();
+                const noteGain = this.audioCtx.createGain();
+                osc.type = type;
+                osc.frequency.value = freq;
+                noteGain.gain.setValueAtTime(0.3, time);
+                noteGain.gain.exponentialRampToValueAtTime(0.01, time + duration);
+                osc.connect(noteGain);
+                noteGain.connect(this.gainNode);
+                osc.start(time);
+                osc.stop(time + duration);
+            }
+
+            play() {
+                if (!this.audioCtx) this.init();
+                if (this.audioCtx.state === 'suspended') this.audioCtx.resume();
+                this.isPlaying = true;
+                
+                // Tetris-inspired melody notes (frequencies)
+                const melody = [
+                    659, 494, 523, 587, 523, 494, 440,
+                    440, 523, 659, 587, 523, 494,
+                    523, 587, 659, 523, 440, 440, 0,
+                    587, 698, 880, 784, 698, 659,
+                    523, 659, 587, 523, 494,
+                    494, 523, 587, 659, 523, 440, 440
+                ];
+                
+                let noteIndex = 0;
+                const playLoop = () => {
+                    if (!this.isPlaying) return;
+                    const time = this.audioCtx.currentTime;
+                    const note = melody[noteIndex % melody.length];
+                    if (note > 0) {
+                        this.playNote(note, 0.18, time, 'square');
+                        this.playNote(note / 2, 0.18, time, 'triangle');
+                    }
+                    noteIndex++;
+                };
+                
+                playLoop();
+                this.intervalId = setInterval(playLoop, 200);
+            }
+
+            stop() {
+                this.isPlaying = false;
+                if (this.intervalId) {
+                    clearInterval(this.intervalId);
+                    this.intervalId = null;
+                }
+            }
+
+            toggle() {
+                if (this.isPlaying) {
+                    this.stop();
+                    return false;
+                } else {
+                    this.play();
+                    return true;
+                }
+            }
+        }
+
+        const music = new ChiptuneMusic();
+    </script>
 
     <script>
         const canvas = document.getElementById('game-board');
@@ -349,8 +428,8 @@
         const isMobile = window.innerWidth <= 700 || 'ontouchstart' in window;
         const COLS = 10;
         const ROWS = 20;
-        const maxHeight = window.innerHeight * 0.55;
-        const maxWidth = window.innerWidth - 40;
+        const maxHeight = window.innerHeight * 0.62;
+        const maxWidth = window.innerWidth - 30;
         const BLOCK_SIZE = isMobile ? Math.min(Math.floor(maxWidth / COLS), Math.floor(maxHeight / ROWS)) : 30;
         
         canvas.width = COLS * BLOCK_SIZE;
@@ -651,19 +730,12 @@
         });
 
         // Music control
-        const music = document.getElementById('bg-music');
         const musicToggle = document.getElementById('music-toggle');
         let musicPlaying = false;
 
         musicToggle.addEventListener('click', () => {
-            if (musicPlaying) {
-                music.pause();
-                musicToggle.textContent = '🔇';
-            } else {
-                music.play();
-                musicToggle.textContent = '🔊';
-            }
-            musicPlaying = !musicPlaying;
+            musicPlaying = music.toggle();
+            musicToggle.textContent = musicPlaying ? '🔊' : '🔇';
         });
 
         // Start screen
@@ -671,10 +743,9 @@
             document.getElementById('start-screen').style.display = 'none';
             gameStarted = true;
             startGame();
-            music.play().then(() => {
-                musicPlaying = true;
-                musicToggle.textContent = '🔊';
-            }).catch(() => {});
+            music.play();
+            musicPlaying = true;
+            musicToggle.textContent = '🔊';
         });
 
         // Swipe controls on canvas for mobile
