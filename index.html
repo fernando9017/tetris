@@ -15,13 +15,17 @@
         body {
             background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
             min-height: 100vh;
+            min-height: 100dvh;
+            max-height: 100vh;
+            max-height: 100dvh;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
+            justify-content: safe center;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             color: white;
             overflow: hidden;
+            padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
         }
 
         .game-container {
@@ -256,13 +260,17 @@
         }
 
         @media (max-width: 700px), (pointer: coarse) {
-            h1 { font-size: 1.5rem; }
-            .stats { font-size: 0.8rem; gap: 10px; }
-            .stat { padding: 5px 10px; }
-            .controls { display: grid !important; }
-            .game-area { flex-direction: column; align-items: center; }
-            .side-panel { flex-direction: row; }
+            h1 { font-size: 1.2rem; margin-bottom: 2px; }
+            .header { margin-bottom: 5px; }
+            .stats { font-size: 0.7rem; gap: 8px; }
+            .stat { padding: 4px 8px; }
+            .controls { display: grid !important; gap: 6px; margin-top: 10px; padding: 5px; }
+            .control-btn { width: 55px; height: 55px; font-size: 1.4rem; }
+            .game-area { flex-direction: column; align-items: center; gap: 8px; }
+            .side-panel { display: none; }
             .keyboard-hint { display: none; }
+            .game-container { gap: 5px; }
+            .next-piece { display: none; }
         }
 
         @media (min-width: 701px) and (pointer: fine) {
@@ -277,12 +285,12 @@
 <body>
     <div class="music-control" id="music-toggle">🔇</div>
     
-    <div class="bg-message top">Hola Dulce 🍬</div>
-    <div class="bg-message bottom">Hola Dulce 🍬</div>
+    <div class="bg-message top">Hola Barbara 🍬</div>
+    <div class="bg-message bottom">Hola Barbara 🍬</div>
 
     <div class="start-screen" id="start-screen">
         <h1>🎮 TETRIS</h1>
-        <div class="message">✨ Hola Dulce ✨</div>
+        <div class="message">✨ Hola Barbara ✨</div>
         <p>Un juego especial para ti 🍬</p>
         <button class="start-btn" id="start-btn">▶️ JUGAR</button>
     </div>
@@ -337,11 +345,13 @@
         const nextCanvas = document.getElementById('next-canvas');
         const nextCtx = nextCanvas.getContext('2d');
 
-        // Responsive sizing
-        const isMobile = window.innerWidth <= 500;
+        // Responsive sizing - fit in iPhone screen
+        const isMobile = window.innerWidth <= 700 || 'ontouchstart' in window;
         const COLS = 10;
         const ROWS = 20;
-        const BLOCK_SIZE = isMobile ? Math.floor((window.innerWidth - 40) / COLS) : 30;
+        const maxHeight = window.innerHeight * 0.55;
+        const maxWidth = window.innerWidth - 40;
+        const BLOCK_SIZE = isMobile ? Math.min(Math.floor(maxWidth / COLS), Math.floor(maxHeight / ROWS)) : 30;
         
         canvas.width = COLS * BLOCK_SIZE;
         canvas.height = ROWS * BLOCK_SIZE;
