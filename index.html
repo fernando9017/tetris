@@ -101,27 +101,32 @@
         .controls {
             display: none;
             grid-template-columns: repeat(3, 1fr);
-            gap: 8px;
-            margin-top: 15px;
+            gap: 10px;
+            margin-top: 20px;
+            padding: 10px;
         }
 
         .control-btn {
-            width: 60px;
-            height: 60px;
+            width: 70px;
+            height: 70px;
             border: none;
             border-radius: 15px;
             background: linear-gradient(145deg, #2a2a4a, #1a1a2e);
             color: white;
-            font-size: 1.5rem;
+            font-size: 1.8rem;
             cursor: pointer;
             box-shadow: 0 4px 15px rgba(0,0,0,0.3);
             transition: all 0.1s;
             -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
         }
 
-        .control-btn:active {
-            transform: scale(0.95);
+        .control-btn:active, .control-btn:focus {
+            transform: scale(0.9);
             box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            outline: none;
         }
 
         .control-btn.rotate {
@@ -250,16 +255,17 @@
             50% { transform: scale(1.05); }
         }
 
-        @media (max-width: 500px) {
+        @media (max-width: 700px), (pointer: coarse) {
             h1 { font-size: 1.5rem; }
             .stats { font-size: 0.8rem; gap: 10px; }
             .stat { padding: 5px 10px; }
-            .controls { display: grid; }
+            .controls { display: grid !important; }
             .game-area { flex-direction: column; align-items: center; }
             .side-panel { flex-direction: row; }
+            .keyboard-hint { display: none; }
         }
 
-        @media (min-width: 501px) {
+        @media (min-width: 701px) and (pointer: fine) {
             .keyboard-hint {
                 margin-top: 15px;
                 font-size: 0.8rem;
@@ -607,22 +613,31 @@
             drawPiece(currentPiece);
         });
 
-        // Touch controls
-        document.getElementById('btn-left').addEventListener('click', () => {
+        // Touch controls - iOS Safari compatible
+        function addTouchControl(id, action) {
+            const btn = document.getElementById(id);
+            ['touchstart', 'mousedown'].forEach(evt => {
+                btn.addEventListener(evt, (e) => {
+                    e.preventDefault();
+                    if (!gameStarted) return;
+                    action();
+                    drawBoard();
+                    drawPiece(currentPiece);
+                }, { passive: false });
+            });
+        }
+
+        addTouchControl('btn-left', () => {
             if (!collision(currentPiece, -1, 0)) currentPiece.x--;
-            drawBoard(); drawPiece(currentPiece);
         });
-        document.getElementById('btn-right').addEventListener('click', () => {
+        addTouchControl('btn-right', () => {
             if (!collision(currentPiece, 1, 0)) currentPiece.x++;
-            drawBoard(); drawPiece(currentPiece);
         });
-        document.getElementById('btn-rotate').addEventListener('click', () => {
+        addTouchControl('btn-rotate', () => {
             rotate(currentPiece);
-            drawBoard(); drawPiece(currentPiece);
         });
-        document.getElementById('btn-drop').addEventListener('click', () => {
+        addTouchControl('btn-drop', () => {
             hardDrop();
-            drawBoard(); drawPiece(currentPiece);
         });
 
         // Music control
@@ -651,6 +666,48 @@
                 musicToggle.textContent = '🔊';
             }).catch(() => {});
         });
+
+        // Swipe controls on canvas for mobile
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let touchStartTime = 0;
+
+        canvas.addEventListener('touchstart', (e) => {
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+            touchStartTime = Date.now();
+        }, { passive: true });
+
+        canvas.addEventListener('touchend', (e) => {
+            if (!gameStarted) return;
+            const touchEndX = e.changedTouches[0].clientX;
+            const touchEndY = e.changedTouches[0].clientY;
+            const deltaX = touchEndX - touchStartX;
+            const deltaY = touchEndY - touchStartY;
+            const deltaTime = Date.now() - touchStartTime;
+
+            const minSwipe = 30;
+            
+            // Tap to rotate (quick touch, minimal movement)
+            if (deltaTime < 200 && Math.abs(deltaX) < 20 && Math.abs(deltaY) < 20) {
+                rotate(currentPiece);
+            }
+            // Horizontal swipe
+            else if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > minSwipe) {
+                if (deltaX > 0 && !collision(currentPiece, 1, 0)) {
+                    currentPiece.x++;
+                } else if (deltaX < 0 && !collision(currentPiece, -1, 0)) {
+                    currentPiece.x--;
+                }
+            }
+            // Swipe down for hard drop
+            else if (deltaY > minSwipe && deltaY > Math.abs(deltaX)) {
+                hardDrop();
+            }
+            
+            drawBoard();
+            drawPiece(currentPiece);
+        }, { passive: true });
 
         // Initial draw
         initBoard();
